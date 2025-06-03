@@ -73,6 +73,61 @@ def standardize_address(address):
     # Remove leading/trailing spaces
     address = address.strip()
     
+    # Dictionary of US state abbreviations
+    states = {
+        r'\bAL\b': 'Alabama',
+        r'\bAK\b': 'Alaska',
+        r'\bAZ\b': 'Arizona',
+        r'\bAR\b': 'Arkansas',
+        r'\bCA\b': 'California',
+        r'\bCO\b': 'Colorado',
+        r'\bCT\b': 'Connecticut',
+        r'\bDE\b': 'Delaware',
+        r'\bFL\b': 'Florida',
+        r'\bGA\b': 'Georgia',
+        r'\bHI\b': 'Hawaii',
+        r'\bID\b': 'Idaho',
+        r'\bIL\b': 'Illinois',
+        r'\bIN\b': 'Indiana',
+        r'\bIA\b': 'Iowa',
+        r'\bKS\b': 'Kansas',
+        r'\bKY\b': 'Kentucky',
+        r'\bLA\b': 'Louisiana',
+        r'\bME\b': 'Maine',
+        r'\bMD\b': 'Maryland',
+        r'\bMA\b': 'Massachusetts',
+        r'\bMI\b': 'Michigan',
+        r'\bMN\b': 'Minnesota',
+        r'\bMS\b': 'Mississippi',
+        r'\bMO\b': 'Missouri',
+        r'\bMT\b': 'Montana',
+        r'\bNE\b': 'Nebraska',
+        r'\bNV\b': 'Nevada',
+        r'\bNH\b': 'New Hampshire',
+        r'\bNJ\b': 'New Jersey',
+        r'\bNM\b': 'New Mexico',
+        r'\bNY\b': 'New York',
+        r'\bNC\b': 'North Carolina',
+        r'\bND\b': 'North Dakota',
+        r'\bOH\b': 'Ohio',
+        r'\bOK\b': 'Oklahoma',
+        r'\bOR\b': 'Oregon',
+        r'\bPA\b': 'Pennsylvania',
+        r'\bRI\b': 'Rhode Island',
+        r'\bSC\b': 'South Carolina',
+        r'\bSD\b': 'South Dakota',
+        r'\bTN\b': 'Tennessee',
+        r'\bTX\b': 'Texas',
+        r'\bUT\b': 'Utah',
+        r'\bVT\b': 'Vermont',
+        r'\bVA\b': 'Virginia',
+        r'\bWA\b': 'Washington',
+        r'\bWV\b': 'West Virginia',
+        r'\bWI\b': 'Wisconsin',
+        r'\bWY\b': 'Wyoming',
+        r'\bDC\b': 'District of Columbia'
+    }
+    
     # Dictionary of common abbreviations
     abbreviations = {
         r'\bcor\b\.?': 'corner',
@@ -86,7 +141,11 @@ def standardize_address(address):
         r'\bfl\b\.?': 'floor'
     }
     
-    # Replace abbreviations
+    # Replace state abbreviations first
+    for abbr, full in states.items():
+        address = re.sub(abbr, full, address)
+    
+    # Replace other abbreviations
     for abbr, full in abbreviations.items():
         address = re.sub(abbr, full, address, flags=re.IGNORECASE)
     
