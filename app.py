@@ -120,20 +120,51 @@ def standardize_address(address):
     # Remove leading/trailing spaces
     address = address.strip()
     
+    # Dictionary of compound directional abbreviations (process these first)
+    directionals = {
+        r'\bnw\b\.?': 'northwest',
+        r'\bne\b\.?': 'northeast',
+        r'\bsw\b\.?': 'southwest',
+        r'\bse\b\.?': 'southeast'
+    }
+    
+    # Replace compound directionals first
+    for abbr, full in directionals.items():
+        address = re.sub(abbr, full, address, flags=re.IGNORECASE)
+    
     # Dictionary of common abbreviations
     abbreviations = {
         r'\bcor\b\.?': 'corner',
         r'\bst\b\.?': 'street',
-        r'\bave\b\.?': 'avenue',
+        r'\b(?:ave?|avn)\b\.?': 'avenue',  # matches ave, av, and avn
         r'\brd\b\.?': 'road',
         r'\bblvd\b\.?': 'boulevard',
         r'\bln\b\.?': 'lane',
         r'\bdr\b\.?': 'drive',
         r'\bapt\b\.?': 'apartment',
-        r'\bfl\b\.?': 'floor'
+        r'\bfl\b\.?': 'floor',
+        r'\brt\b\.?': 'route',
+        r'\bhwy\b\.?': 'highway',
+        r'\bp(?:k?wy|rkw)\b\.?': 'parkway',  # matches pkwy, prkw, pwy
+        r'\bsq\b\.?': 'square',
+        r'\bpl\b\.?': 'place',
+        r'\bter\b\.?': 'terrace',
+        r'\bcir\b\.?': 'circle',
+        r'\bct\b\.?': 'court',
+        r'\bexpy\b\.?': 'expressway',
+        r'\bfwy\b\.?': 'freeway',
+        r'\bste\b\.?': 'suite',
+        r'\bn\b\.?': 'north',
+        r'\bs\b\.?': 'south',
+        r'\be\b\.?': 'east',
+        r'\bw\b\.?': 'west',
+        r'\bno\b\.?': 'number',
+        r'\b#\b': 'number',
+        r'\bext\b\.?': 'extension',
+        r'\bse\b\.?': 'section'
     }
     
-    # Replace abbreviations
+    # Replace other abbreviations
     for abbr, full in abbreviations.items():
         address = re.sub(abbr, full, address, flags=re.IGNORECASE)
     
