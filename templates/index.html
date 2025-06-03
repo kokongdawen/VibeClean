@@ -110,6 +110,73 @@
             background-color: #e9ecef;
             border-radius: 4px;
         }
+        
+        /* New styles for animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        .btn-loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        
+        .btn-loading::after {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-top: -8px;
+            margin-left: -8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .download-btn.clicked {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        
+        .download-btn.clicked::after {
+            content: "✓";
+            position: absolute;
+            right: 10px;
+            animation: checkmark 0.5s ease-in-out;
+        }
+        
+        @keyframes checkmark {
+            0% {
+                opacity: 0;
+                transform: scale(0);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
     </style>
 </head>
 <body>
@@ -287,7 +354,7 @@
         const csvDownload = document.getElementById('csv-download');
         const txtDownload = document.getElementById('txt-download');
 
-        // Handle drag and drop
+        // Handle drag and drop events
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dragArea.addEventListener(eventName, preventDefaults, false);
         });
@@ -337,6 +404,15 @@
             }
         }
 
+        // Reset download buttons
+        function resetDownloadButtons() {
+            [xlsxDownload, csvDownload, txtDownload].forEach(btn => {
+                btn.classList.remove('clicked');
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+            });
+        }
+
         document.getElementById('upload-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const file = fileInput.files[0];
@@ -345,10 +421,17 @@
             const formData = new FormData();
             formData.append('file', file);
 
+            // Show loading state on button
+            uploadButton.classList.add('btn-loading');
+            uploadButton.disabled = true;
+
+            // Hide previous download options if they exist
+            downloadOptions.style.display = 'none';
+            resetDownloadButtons();
+
             // Show progress
-            const progress = document.getElementById('progress');
-            progress.style.display = 'block';
-            progress.querySelector('.progress-bar').style.width = '50%';
+            progressDiv.style.display = 'block';
+            progressBar.style.width = '50%';
 
             try {
                 const response = await fetch('/upload', {
@@ -363,21 +446,38 @@
                     return;
                 }
 
-                // Show download options
-                document.getElementById('download-options').style.display = 'block';
-                document.getElementById('output-preview').style.display = 'block';
-                
                 // Update download links
-                document.getElementById('xlsx-download').href = `/download/${result.xlsx_filename}`;
-                document.getElementById('csv-download').href = `/download/${result.csv_filename}`;
-                document.getElementById('txt-download').href = `/download/${result.txt_filename}`;
+                xlsxDownload.href = `/download/${result.xlsx_filename}`;
+                csvDownload.href = `/download/${result.csv_filename}`;
+                txtDownload.href = `/download/${result.txt_filename}`;
+                
+                // Show download options with animation
+                downloadOptions.style.display = 'block';
+                downloadOptions.classList.add('fade-in-up');
                 
                 // Complete progress bar
-                progress.querySelector('.progress-bar').style.width = '100%';
+                progressBar.style.width = '100%';
                 
             } catch (error) {
                 alert('An error occurred while processing the file.');
+            } finally {
+                // Remove loading state from button
+                uploadButton.classList.remove('btn-loading');
+                uploadButton.disabled = false;
             }
+        });
+
+        // Add click animations for download buttons
+        [xlsxDownload, csvDownload, txtDownload].forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                // Add clicked animation
+                this.classList.add('clicked');
+                
+                // Reset after animation
+                setTimeout(() => {
+                    this.classList.remove('clicked');
+                }, 2000);
+            });
         });
     </script>
 </body>
