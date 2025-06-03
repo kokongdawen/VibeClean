@@ -29,6 +29,8 @@ def add_security_headers(response):
 ALLOWED_EXTENSIONS = {'xls', 'xlsx', 'csv', 'txt'}
 VALID_COLUMN_NAMES = ['address', 'addresses']
 VALID_STATE_COLUMN_NAMES = ['state', 'states']
+VALID_CITY_COLUMN_NAMES = ['city', 'cities']
+VALID_ZIP_COLUMN_NAMES = ['zip', 'zips', 'zip_code', 'zip_codes', 'zipcode', 'zipcodes']
 
 # Dictionary of US state abbreviations
 STATES = {
@@ -102,6 +104,14 @@ def find_address_column(df):
 def find_state_column(df):
     """Find the state column name regardless of case"""
     return find_column(df, VALID_STATE_COLUMN_NAMES)
+
+def find_city_column(df):
+    """Find the city column name regardless of case"""
+    return find_column(df, VALID_CITY_COLUMN_NAMES)
+
+def find_zip_column(df):
+    """Find the ZIP code column name regardless of case"""
+    return find_column(df, VALID_ZIP_COLUMN_NAMES)
 
 def standardize_state(state):
     """Convert state abbreviation or name to full state name"""
@@ -252,21 +262,54 @@ def get_maps_search_url(address, state=None):
     encoded_address = urllib.parse.quote(full_address)
     return f"{base_url}{encoded_address}"
 
-def process_address(address, state=None):
-    if pd.isna(address) or not isinstance(address, str):
-        return None, None, None, None, False
+def standardize_zip(zip_code):
+    """Standardize ZIP code format"""
+    if pd.isna(zip_code) or not isinstance(zip_code, str):
+        return None
     
-    # Clean and standardize the address
+    # Remove any non-digit characters
+    zip_code = re.sub(r'\D', '', str(zip_code))
+    
+    # Return first 5 digits if available
+    return zip_code[:5] if len(zip_code) >= 5 else None
+
+def standardize_city(city):
+    """Standardize city name format"""
+    if pd.isna(city) or not isinstance(city, str):
+        return None
+    
+    # Clean the text first
+    city = clean_text(city)
+    
+    # Title case the city name
+    return city.title()
+
+def process_address(address, state=None, city=None, zip_code=None):
+    if pd.isna(address) or not isinstance(address, str):
+        return None, None, None, None, None, None, False
+    
+    # Clean and standardize the address and components
     standardized_address = standardize_address(address)
     standardized_state = standardize_state(state) if state else None
+    standardized_city = standardize_city(city) if city else None
+    standardized_zip = standardize_zip(zip_code) if zip_code else None
     
     # Parse the standardized address
     components = parse_address(standardized_address)
     
+    # If we have manual components, override the parsed ones
+    if components:
+        if standardized_city:
+            components['city'] = standardized_city
+        if standardized_state:
+            components['state'] = standardized_state
+        if standardized_zip:
+            components['zip_code'] = standardized_zip
+    
     # Generate Maps URL
     maps_url = get_maps_search_url(standardized_address, standardized_state)
     
-    return standardized_address, standardized_state, components, maps_url, True
+    return standardized_address, standardized_state, standardized_city, standardized_zip, components, maps_url, True
 
 def clean_text(text):
     """Clean text by removing extra spaces, special characters, and HTML tags"""
@@ -413,9 +456,11 @@ def upload_file():
         # Read the file
         df = read_file_content(file, filename.rsplit('.', 1)[1].lower())
         
-        # Find the address and state columns
+        # Find the address, state, city, and ZIP columns
         address_column = find_address_column(df)
         state_column = find_state_column(df)
+        city_column = find_city_column(df)
+        zip_column = find_zip_column(df)
         
         if not address_column:
             return jsonify({'error': 'No column named "Address" or "Addresses" found in the file'}), 400
@@ -423,6 +468,8 @@ def upload_file():
         # Create new columns for the processed data
         df['Standardized_Address'] = None
         df['Standardized_State'] = None
+        df['Standardized_City'] = None
+        df['Standardized_ZIP'] = None
         df['Street_Number'] = None
         df['Street_Name'] = None
         df['City'] = None
@@ -435,13 +482,21 @@ def upload_file():
         for idx in df.index:
             if pd.notna(df.at[idx, address_column]):
                 state_value = df.at[idx, state_column] if state_column else None
-                standardized_addr, standardized_state, components, maps_url, was_updated = process_address(
+                city_value = df.at[idx, city_column] if city_column else None
+                zip_value = df.at[idx, zip_column] if zip_column else None
+                
+                standardized_addr, standardized_state, standardized_city, standardized_zip, components, maps_url, was_updated = process_address(
                     df.at[idx, address_column],
-                    state_value
+                    state_value,
+                    city_value,
+                    zip_value
                 )
+                
                 if was_updated:
                     df.at[idx, 'Standardized_Address'] = standardized_addr
                     df.at[idx, 'Standardized_State'] = standardized_state
+                    df.at[idx, 'Standardized_City'] = standardized_city
+                    df.at[idx, 'Standardized_ZIP'] = standardized_zip
                     if components:
                         df.at[idx, 'Street_Number'] = components['street_number']
                         df.at[idx, 'Street_Name'] = components['street_name']

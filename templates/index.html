@@ -92,6 +92,24 @@
             margin-right: 10px;
             flex-shrink: 0;
         }
+        .output-preview {
+            margin-top: 20px;
+            display: none;
+        }
+        .component-table {
+            font-size: 0.9rem;
+            margin-top: 15px;
+        }
+        .component-table th {
+            background-color: #f8f9fa;
+        }
+        .format-badge {
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            margin-left: 5px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -101,18 +119,19 @@
                 <div class="upload-container">
                     <h2 class="text-center mb-3">VibeClean</h2>
                     <p class="text-center tagline">
-                        Simple Address Cleaning Tool Using Python
+                        Advanced Address Standardization and Parsing Tool
                     </p>
                     
                     <p class="text-center text-muted mb-4">
-                        Upload your Excel or CSV file containing addresses to standardize them and get Google Maps links.
+                        Upload your file containing addresses to standardize them, parse components, and get Google Maps links.
                     </p>
                     
                     <form id="upload-form" enctype="multipart/form-data">
                         <div class="drag-area" id="drag-area">
                             <div class="icon"><i class="fas fa-cloud-upload-alt"></i></div>
-                            <p>Drag & Drop your Excel or CSV file here or click to browse</p>
-                            <input type="file" id="file-input" accept=".xlsx,.xls,.csv" class="d-none">
+                            <p>Drag & Drop your file here or click to browse</p>
+                            <small class="text-muted">Supported formats: Excel (.xlsx/.xls), CSV (.csv), Text (.txt)</small>
+                            <input type="file" id="file-input" accept=".xlsx,.xls,.csv,.txt" class="d-none">
                         </div>
                         
                         <div class="text-center">
@@ -135,56 +154,119 @@
                             <a href="#" class="btn btn-success download-btn" id="csv-download">
                                 <i class="fas fa-file-csv"></i> CSV
                             </a>
+                            <a href="#" class="btn btn-success download-btn" id="txt-download">
+                                <i class="fas fa-file-alt"></i> Text (.txt)
+                            </a>
+                        </div>
+
+                        <!-- Output Preview -->
+                        <div id="output-preview" class="output-preview">
+                            <h6 class="mb-3">Sample Output Preview:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm component-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Component</th>
+                                            <th>Example</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Original Address</td>
+                                            <td>123 n main st apt 4, new york, ny 10001</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Standardized Address</td>
+                                            <td>123 North Main Street Apartment 4, New York, New York 10001</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Street Number</td>
+                                            <td>123</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Street Name</td>
+                                            <td>North Main Street</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Unit</td>
+                                            <td>Apartment 4</td>
+                                        </tr>
+                                        <tr>
+                                            <td>City</td>
+                                            <td>New York</td>
+                                        </tr>
+                                        <tr>
+                                            <td>State</td>
+                                            <td>New York</td>
+                                        </tr>
+                                        <tr>
+                                            <td>ZIP Code</td>
+                                            <td>10001</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </form>
 
                     <!-- Format Instructions -->
                     <div class="format-instructions">
-                        <h5 class="mb-3"><i class="fas fa-info-circle text-primary"></i> How to Format Your File</h5>
+                        <h5 class="mb-3"><i class="fas fa-info-circle text-primary"></i> File Format Guide</h5>
                         
                         <div class="instruction-step">
                             <div class="step-number">1</div>
-                            <div>Create an Excel (.xlsx/.xls) or CSV file with a column named "Address" or "Addresses"</div>
+                            <div>
+                                Prepare your file in one of these formats:
+                                <div class="mt-2">
+                                    <span class="format-badge">Excel (.xlsx/.xls)</span>
+                                    <span class="format-badge">CSV (.csv)</span>
+                                    <span class="format-badge">Text (.txt)</span>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="instruction-step">
                             <div class="step-number">2</div>
-                            <div>Enter your addresses in the rows below the header</div>
+                            <div>
+                                For Excel/CSV: Use column headers:<br>
+                                - Required: "Address" or "Addresses"<br>
+                                - Optional: "State"/"States", "City"/"Cities", "ZIP"/"ZIP_Code"/"Zipcode"<br>
+                                For Text: One address per line
+                            </div>
                         </div>
 
                         <div class="instruction-step">
                             <div class="step-number">3</div>
-                            <div>Upload your file and choose your preferred download format (Excel or CSV)</div>
+                            <div>Upload and choose your preferred download format</div>
                         </div>
 
                         <div class="excel-preview">
                             <div class="excel-header">
-                                <strong>Address</strong> or <strong>Addresses</strong> | Other Columns (optional)
+                                <strong>Address</strong> | <strong>City</strong> (optional) | <strong>State</strong> (optional) | <strong>ZIP</strong> (optional) | Other Columns (optional)
                             </div>
                             <div class="excel-row">
-                                123 Main St, City, State
+                                123 Main St | New York | NY | 10001 | Additional Info
                             </div>
                             <div class="excel-row">
-                                456 Oak Ave, Town, State
-                            </div>
-                            <div class="excel-row">
-                                789 Pine Blvd, Village, State
+                                456 Oak Ave | Los Angeles | CA | 90001 | More Info
                             </div>
                         </div>
 
                         <div class="alert alert-info mt-3 mb-0">
-                            <i class="fas fa-lightbulb"></i> Tips:
+                            <i class="fas fa-lightbulb"></i> Features:
                             <ul class="mb-0 mt-2">
-                                <li>The column name can be "Address" or "Addresses" (not case sensitive)</li>
-                                <li>You can have other columns - they won't affect processing</li>
-                                <li>Addresses can be in any format - we'll standardize them</li>
+                                <li>Standardizes addresses using APA style formatting</li>
+                                <li>Parses address into components (street, city, state, ZIP)</li>
+                                <li>Expands abbreviations (St → Street, Ave → Avenue, etc.)</li>
+                                <li>Handles directional abbreviations (NW → Northwest)</li>
+                                <li>Cleans text (removes extra spaces, special characters)</li>
                                 <li>Download options:
                                     <ul>
-                                        <li>Excel (.xlsx) - Includes color highlighting for processed rows</li>
-                                        <li>CSV - Simple text format, compatible with most applications</li>
+                                        <li>Excel (.xlsx) - Includes color highlighting and all components</li>
+                                        <li>CSV - All components in separate columns</li>
+                                        <li>Text (.txt) - Clean, formatted addresses one per line</li>
                                     </ul>
                                 </li>
-                                <li>You can download in either format regardless of your input file format</li>
                             </ul>
                         </div>
                     </div>
@@ -203,6 +285,7 @@
         const downloadOptions = document.getElementById('download-options');
         const xlsxDownload = document.getElementById('xlsx-download');
         const csvDownload = document.getElementById('csv-download');
+        const txtDownload = document.getElementById('txt-download');
 
         // Handle drag and drop
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -244,11 +327,11 @@
             const files = e.target.files;
             if (files.length > 0) {
                 const file = files[0];
-                if (file.name.match(/\.(xlsx|xls|csv)$/)) {
+                if (file.name.match(/\.(xlsx|xls|csv|txt)$/)) {
                     uploadButton.disabled = false;
                     dragArea.querySelector('p').textContent = `Selected: ${file.name}`;
                 } else {
-                    alert('Please select an Excel (.xlsx/.xls) or CSV file');
+                    alert('Please select a valid file format');
                     uploadButton.disabled = true;
                 }
             }
@@ -256,35 +339,45 @@
 
         document.getElementById('upload-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+            const file = fileInput.files[0];
+            if (!file) return;
 
-            uploadButton.disabled = true;
-            progressDiv.style.display = 'block';
-            downloadOptions.style.display = 'none';
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show progress
+            const progress = document.getElementById('progress');
+            progress.style.display = 'block';
+            progress.querySelector('.progress-bar').style.width = '50%';
 
             try {
                 const response = await fetch('/upload', {
                     method: 'POST',
                     body: formData
                 });
-
+                
                 const result = await response.json();
                 
-                if (result.success) {
-                    progressBar.style.width = '100%';
-                    downloadOptions.style.display = 'block';
-                    xlsxDownload.href = `/download/${result.xlsx_filename}`;
-                    csvDownload.href = `/download/${result.csv_filename}`;
-                } else {
-                    alert(result.error || 'An error occurred during processing');
+                if (result.error) {
+                    alert(result.error);
+                    return;
                 }
-            } catch (error) {
-                alert('An error occurred during upload');
-                console.error('Error:', error);
-            }
 
-            uploadButton.disabled = false;
+                // Show download options
+                document.getElementById('download-options').style.display = 'block';
+                document.getElementById('output-preview').style.display = 'block';
+                
+                // Update download links
+                document.getElementById('xlsx-download').href = `/download/${result.xlsx_filename}`;
+                document.getElementById('csv-download').href = `/download/${result.csv_filename}`;
+                document.getElementById('txt-download').href = `/download/${result.txt_filename}`;
+                
+                // Complete progress bar
+                progress.querySelector('.progress-bar').style.width = '100%';
+                
+            } catch (error) {
+                alert('An error occurred while processing the file.');
+            }
         });
     </script>
 </body>
