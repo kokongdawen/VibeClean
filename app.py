@@ -26,16 +26,135 @@ def add_security_headers(response):
 
 ALLOWED_EXTENSIONS = {'xls', 'xlsx', 'csv'}
 VALID_COLUMN_NAMES = ['address', 'addresses']
+VALID_STATE_COLUMN_NAMES = ['state', 'states']
+
+# Dictionary of US state abbreviations
+STATES = {
+    'AL': 'Alabama',
+    'AK': 'Alaska',
+    'AZ': 'Arizona',
+    'AR': 'Arkansas',
+    'CA': 'California',
+    'CO': 'Colorado',
+    'CT': 'Connecticut',
+    'DE': 'Delaware',
+    'FL': 'Florida',
+    'GA': 'Georgia',
+    'HI': 'Hawaii',
+    'ID': 'Idaho',
+    'IL': 'Illinois',
+    'IN': 'Indiana',
+    'IA': 'Iowa',
+    'KS': 'Kansas',
+    'KY': 'Kentucky',
+    'LA': 'Louisiana',
+    'ME': 'Maine',
+    'MD': 'Maryland',
+    'MA': 'Massachusetts',
+    'MI': 'Michigan',
+    'MN': 'Minnesota',
+    'MS': 'Mississippi',
+    'MO': 'Missouri',
+    'MT': 'Montana',
+    'NE': 'Nebraska',
+    'NV': 'Nevada',
+    'NH': 'New Hampshire',
+    'NJ': 'New Jersey',
+    'NM': 'New Mexico',
+    'NY': 'New York',
+    'NC': 'North Carolina',
+    'ND': 'North Dakota',
+    'OH': 'Ohio',
+    'OK': 'Oklahoma',
+    'OR': 'Oregon',
+    'PA': 'Pennsylvania',
+    'RI': 'Rhode Island',
+    'SC': 'South Carolina',
+    'SD': 'South Dakota',
+    'TN': 'Tennessee',
+    'TX': 'Texas',
+    'UT': 'Utah',
+    'VT': 'Vermont',
+    'VA': 'Virginia',
+    'WA': 'Washington',
+    'WV': 'West Virginia',
+    'WI': 'Wisconsin',
+    'WY': 'Wyoming',
+    'DC': 'District of Columbia'
+}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def find_address_column(df):
-    """Find the address column name regardless of case"""
+def find_column(df, valid_names):
+    """Find a column name regardless of case"""
     for col in df.columns:
-        if col.lower() in VALID_COLUMN_NAMES:
+        if col.lower() in valid_names:
             return col
     return None
+
+def find_address_column(df):
+    """Find the address column name regardless of case"""
+    return find_column(df, VALID_COLUMN_NAMES)
+
+def find_state_column(df):
+    """Find the state column name regardless of case"""
+    return find_column(df, VALID_STATE_COLUMN_NAMES)
+
+def standardize_state(state):
+    """Convert state abbreviation or name to full state name"""
+    if pd.isna(state) or not isinstance(state, str):
+        return None
+    
+    state = state.strip().upper()
+    
+    # If it's already a full state name, return it properly capitalized
+    for full_name in STATES.values():
+        if state == full_name.upper():
+            return full_name
+    
+    # If it's an abbreviation, convert to full name
+    return STATES.get(state, state)  # Return original if not found
+
+def standardize_address(address):
+    # Remove leading/trailing spaces
+    address = address.strip()
+    
+    # Dictionary of common abbreviations
+    abbreviations = {
+        r'\bcor\b\.?': 'corner',
+        r'\bst\b\.?': 'street',
+        r'\bave\b\.?': 'avenue',
+        r'\brd\b\.?': 'road',
+        r'\bblvd\b\.?': 'boulevard',
+        r'\bln\b\.?': 'lane',
+        r'\bdr\b\.?': 'drive',
+        r'\bapt\b\.?': 'apartment',
+        r'\bfl\b\.?': 'floor'
+    }
+    
+    # Replace abbreviations
+    for abbr, full in abbreviations.items():
+        address = re.sub(abbr, full, address, flags=re.IGNORECASE)
+    
+    return address
+
+def get_maps_search_url(address, state=None):
+    """Generate a Google Maps search URL for the address"""
+    base_url = "https://www.google.com/maps/search/"
+    full_address = f"{address}, {state}" if state else address
+    encoded_address = urllib.parse.quote(full_address)
+    return f"{base_url}{encoded_address}"
+
+def process_address(address, state=None):
+    if pd.isna(address) or not isinstance(address, str):
+        return None, None, None, False
+    
+    standardized_address = standardize_address(address)
+    standardized_state = standardize_state(state) if state else None
+    maps_url = get_maps_search_url(standardized_address, standardized_state)
+    
+    return standardized_address, standardized_state, maps_url, True
 
 def save_file(df, filename, format_type):
     """Save file in specified format with optional Excel formatting"""
@@ -69,103 +188,6 @@ def save_file(df, filename, format_type):
     
     return output_filename, output_path
 
-def standardize_address(address):
-    # Remove leading/trailing spaces
-    address = address.strip()
-    
-    # Dictionary of US state abbreviations
-    states = {
-        r'\bAL\b': 'Alabama',
-        r'\bAK\b': 'Alaska',
-        r'\bAZ\b': 'Arizona',
-        r'\bAR\b': 'Arkansas',
-        r'\bCA\b': 'California',
-        r'\bCO\b': 'Colorado',
-        r'\bCT\b': 'Connecticut',
-        r'\bDE\b': 'Delaware',
-        r'\bFL\b': 'Florida',
-        r'\bGA\b': 'Georgia',
-        r'\bHI\b': 'Hawaii',
-        r'\bID\b': 'Idaho',
-        r'\bIL\b': 'Illinois',
-        r'\bIN\b': 'Indiana',
-        r'\bIA\b': 'Iowa',
-        r'\bKS\b': 'Kansas',
-        r'\bKY\b': 'Kentucky',
-        r'\bLA\b': 'Louisiana',
-        r'\bME\b': 'Maine',
-        r'\bMD\b': 'Maryland',
-        r'\bMA\b': 'Massachusetts',
-        r'\bMI\b': 'Michigan',
-        r'\bMN\b': 'Minnesota',
-        r'\bMS\b': 'Mississippi',
-        r'\bMO\b': 'Missouri',
-        r'\bMT\b': 'Montana',
-        r'\bNE\b': 'Nebraska',
-        r'\bNV\b': 'Nevada',
-        r'\bNH\b': 'New Hampshire',
-        r'\bNJ\b': 'New Jersey',
-        r'\bNM\b': 'New Mexico',
-        r'\bNY\b': 'New York',
-        r'\bNC\b': 'North Carolina',
-        r'\bND\b': 'North Dakota',
-        r'\bOH\b': 'Ohio',
-        r'\bOK\b': 'Oklahoma',
-        r'\bOR\b': 'Oregon',
-        r'\bPA\b': 'Pennsylvania',
-        r'\bRI\b': 'Rhode Island',
-        r'\bSC\b': 'South Carolina',
-        r'\bSD\b': 'South Dakota',
-        r'\bTN\b': 'Tennessee',
-        r'\bTX\b': 'Texas',
-        r'\bUT\b': 'Utah',
-        r'\bVT\b': 'Vermont',
-        r'\bVA\b': 'Virginia',
-        r'\bWA\b': 'Washington',
-        r'\bWV\b': 'West Virginia',
-        r'\bWI\b': 'Wisconsin',
-        r'\bWY\b': 'Wyoming',
-        r'\bDC\b': 'District of Columbia'
-    }
-    
-    # Dictionary of common abbreviations
-    abbreviations = {
-        r'\bcor\b\.?': 'corner',
-        r'\bst\b\.?': 'street',
-        r'\bave\b\.?': 'avenue',
-        r'\brd\b\.?': 'road',
-        r'\bblvd\b\.?': 'boulevard',
-        r'\bln\b\.?': 'lane',
-        r'\bdr\b\.?': 'drive',
-        r'\bapt\b\.?': 'apartment',
-        r'\bfl\b\.?': 'floor'
-    }
-    
-    # Replace state abbreviations first
-    for abbr, full in states.items():
-        address = re.sub(abbr, full, address)
-    
-    # Replace other abbreviations
-    for abbr, full in abbreviations.items():
-        address = re.sub(abbr, full, address, flags=re.IGNORECASE)
-    
-    return address
-
-def get_maps_search_url(address):
-    """Generate a Google Maps search URL for the address"""
-    base_url = "https://www.google.com/maps/search/"
-    encoded_address = urllib.parse.quote(address)
-    return f"{base_url}{encoded_address}"
-
-def process_address(address):
-    if pd.isna(address) or not isinstance(address, str):
-        return None, None, False
-    
-    standardized_address = standardize_address(address)
-    maps_url = get_maps_search_url(standardized_address)
-    
-    return standardized_address, maps_url, True
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -193,22 +215,30 @@ def upload_file():
         else:
             df = pd.read_excel(file)
         
-        # Find the address column
+        # Find the address and state columns
         address_column = find_address_column(df)
+        state_column = find_state_column(df)
+        
         if not address_column:
             return jsonify({'error': 'No column named "Address" or "Addresses" found in the file'}), 400
         
         # Create new columns for the processed data
         df['Standardized_Address'] = None
+        df['Standardized_State'] = None
         df['Maps_URL'] = None
         df['Address_Updated'] = False
         
         # Process each address
         for idx in df.index:
             if pd.notna(df.at[idx, address_column]):
-                standardized, maps_url, was_updated = process_address(df.at[idx, address_column])
+                state_value = df.at[idx, state_column] if state_column else None
+                standardized_addr, standardized_state, maps_url, was_updated = process_address(
+                    df.at[idx, address_column],
+                    state_value
+                )
                 if was_updated:
-                    df.at[idx, 'Standardized_Address'] = standardized
+                    df.at[idx, 'Standardized_Address'] = standardized_addr
+                    df.at[idx, 'Standardized_State'] = standardized_state
                     df.at[idx, 'Maps_URL'] = maps_url
                     df.at[idx, 'Address_Updated'] = True
         
