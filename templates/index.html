@@ -157,25 +157,24 @@
         .download-btn.clicked {
             position: relative;
             pointer-events: none;
-            opacity: 0.8;
+            animation: fadeButton 2s ease-in-out;
         }
         
-        .download-btn.clicked::after {
-            content: "✓";
-            position: absolute;
-            right: 10px;
-            animation: checkmark 0.5s ease-in-out;
-        }
-        
-        @keyframes checkmark {
+        @keyframes fadeButton {
             0% {
-                opacity: 0;
-                transform: scale(0);
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
             }
             100% {
                 opacity: 1;
-                transform: scale(1);
             }
+        }
+        
+        /* Remove the checkmark styles */
+        .download-btn.clicked::after {
+            content: none;
         }
     </style>
 </head>
