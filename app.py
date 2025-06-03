@@ -223,30 +223,8 @@ def standardize_address(address):
     for abbr, full in abbreviations.items():
         address = re.sub(abbr, full, address, flags=re.IGNORECASE)
     
-    # Parse address into components
-    components = parse_address(address)
-    
-    if components:
-        # Apply APA title case to each component
-        for key in components:
-            if components[key]:
-                components[key] = apply_apa_title_case(components[key])
-        
-        # Reconstruct the address
-        parts = []
-        if components['street_number']:
-            parts.append(components['street_number'])
-        if components['street_name']:
-            parts.append(components['street_name'])
-        if components['city']:
-            parts.append(components['city'])
-        if components['state']:
-            parts.append(components['state'])
-        
-        return ', '.join(parts)
-    else:
-        # If parsing fails, just apply APA title case to the whole address
-        return apply_apa_title_case(address)
+    # Apply APA title case to the whole address
+    return apply_apa_title_case(address)
 
 def get_maps_search_url(address, state=None):
     """Generate a Google Maps search URL for the address"""
@@ -268,27 +246,17 @@ def standardize_city(city):
 
 def process_address(address, state=None, city=None):
     if pd.isna(address) or not isinstance(address, str):
-        return None, None, None, None, None, False
+        return None, None, None, None, False
     
     # Clean and standardize the address and components
     standardized_address = standardize_address(address)
     standardized_state = standardize_state(state) if state else None
     standardized_city = standardize_city(city) if city else None
     
-    # Parse the standardized address
-    components = parse_address(standardized_address)
-    
-    # If we have manual components, override the parsed ones
-    if components:
-        if standardized_city:
-            components['city'] = standardized_city
-        if standardized_state:
-            components['state'] = standardized_state
-    
     # Generate Maps URL
     maps_url = get_maps_search_url(standardized_address, standardized_state)
     
-    return standardized_address, standardized_state, standardized_city, components, maps_url, True
+    return standardized_address, standardized_state, standardized_city, maps_url, True
 
 def clean_text(text):
     """Clean text by removing extra spaces, special characters, and HTML tags"""
@@ -376,6 +344,8 @@ def save_file(df, filename, format_type):
                     address_parts.append(row['Standardized_State'])
                 if pd.notna(row.get('Standardized_City')):
                     address_parts.append(row['Standardized_City'])
+                if pd.notna(row.get('Maps_URL')):
+                    address_parts.append(f"Maps: {row['Maps_URL']}")
                 formatted_addresses.append(' | '.join(address_parts))
         
         with open(output_path, 'w', encoding='utf-8') as f:
@@ -445,6 +415,7 @@ def upload_file():
         df['Standardized_Address'] = None
         df['Standardized_State'] = None
         df['Standardized_City'] = None
+        df['Maps_URL'] = None
         df['Address_Updated'] = False
         
         # Process each address
@@ -453,7 +424,7 @@ def upload_file():
                 state_value = df.at[idx, state_column] if state_column else None
                 city_value = df.at[idx, city_column] if city_column else None
                 
-                standardized_addr, standardized_state, standardized_city, components, maps_url, was_updated = process_address(
+                standardized_addr, standardized_state, standardized_city, maps_url, was_updated = process_address(
                     df.at[idx, address_column],
                     state_value,
                     city_value
@@ -463,6 +434,7 @@ def upload_file():
                     df.at[idx, 'Standardized_Address'] = standardized_addr
                     df.at[idx, 'Standardized_State'] = standardized_state
                     df.at[idx, 'Standardized_City'] = standardized_city
+                    df.at[idx, 'Maps_URL'] = maps_url
                     df.at[idx, 'Address_Updated'] = True
         
         # Save in all formats
