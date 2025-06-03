@@ -7,6 +7,8 @@ import openpyxl
 import urllib.parse
 import tempfile
 from pathlib import Path
+import html
+import usaddress
 
 app = Flask(__name__)
 
@@ -24,7 +26,7 @@ def add_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
-ALLOWED_EXTENSIONS = {'xls', 'xlsx', 'csv'}
+ALLOWED_EXTENSIONS = {'xls', 'xlsx', 'csv', 'txt'}
 VALID_COLUMN_NAMES = ['address', 'addresses']
 VALID_STATE_COLUMN_NAMES = ['state', 'states']
 
@@ -116,16 +118,61 @@ def standardize_state(state):
     # If it's an abbreviation, convert to full name
     return STATES.get(state, state)  # Return original if not found
 
+def apply_apa_title_case(text):
+    """Apply APA style title case formatting"""
+    if pd.isna(text) or not isinstance(text, str):
+        return text
+        
+    # Words that should not be capitalized unless they are the first word
+    lowercase_words = {
+        'a', 'an', 'the',  # Articles
+        'and', 'but', 'or', 'for', 'nor',  # Coordinating conjunctions
+        'in', 'on', 'at', 'by', 'to', 'of',  # Short prepositions
+        'via', 'the'
+    }
+    
+    # Split the text into words
+    words = text.split()
+    if not words:
+        return text
+        
+    # Process each word
+    result = []
+    for i, word in enumerate(words):
+        # Always capitalize first word
+        if i == 0:
+            result.append(word.capitalize())
+            continue
+            
+        # Check if word contains hyphen
+        if '-' in word:
+            # Capitalize each part after hyphen
+            parts = word.split('-')
+            capitalized_parts = [p.capitalize() for p in parts]
+            result.append('-'.join(capitalized_parts))
+            continue
+            
+        # Don't capitalize short words unless they're proper nouns
+        if (word.lower() in lowercase_words and 
+            len(word) < 4 and 
+            not word.isupper()  # Don't lowercase potential abbreviations
+        ):
+            result.append(word.lower())
+        else:
+            result.append(word.capitalize())
+    
+    return ' '.join(result)
+
 def standardize_address(address):
     # Remove leading/trailing spaces
     address = address.strip()
     
     # Dictionary of compound directional abbreviations (process these first)
     directionals = {
-        r'\bnw\b\.?': 'northwest',
-        r'\bne\b\.?': 'northeast',
-        r'\bsw\b\.?': 'southwest',
-        r'\bse\b\.?': 'southeast'
+        r'\bnw\b\.?': 'Northwest',
+        r'\bne\b\.?': 'Northeast',
+        r'\bsw\b\.?': 'Southwest',
+        r'\bse\b\.?': 'Southeast'
     }
     
     # Replace compound directionals first
@@ -134,41 +181,69 @@ def standardize_address(address):
     
     # Dictionary of common abbreviations
     abbreviations = {
-        r'\bcor\b\.?': 'corner',
-        r'\bst\b\.?': 'street',
-        r'\b(?:ave?|avn)\b\.?': 'avenue',  # matches ave, av, and avn
-        r'\brd\b\.?': 'road',
-        r'\bblvd\b\.?': 'boulevard',
-        r'\bln\b\.?': 'lane',
-        r'\bdr\b\.?': 'drive',
-        r'\bapt\b\.?': 'apartment',
-        r'\bfl\b\.?': 'floor',
-        r'\brt\b\.?': 'route',
-        r'\bhwy\b\.?': 'highway',
-        r'\bp(?:k?wy|rkw)\b\.?': 'parkway',  # matches pkwy, prkw, pwy
-        r'\bsq\b\.?': 'square',
-        r'\bpl\b\.?': 'place',
-        r'\bter\b\.?': 'terrace',
-        r'\bcir\b\.?': 'circle',
-        r'\bct\b\.?': 'court',
-        r'\bexpy\b\.?': 'expressway',
-        r'\bfwy\b\.?': 'freeway',
-        r'\bste\b\.?': 'suite',
-        r'\bn\b\.?': 'north',
-        r'\bs\b\.?': 'south',
-        r'\be\b\.?': 'east',
-        r'\bw\b\.?': 'west',
-        r'\bno\b\.?': 'number',
-        r'\b#\b': 'number',
-        r'\bext\b\.?': 'extension',
-        r'\bse\b\.?': 'section'
+        r'\bcor\b\.?': 'Corner',
+        r'\bst\b\.?': 'Street',
+        r'\b(?:ave?|avn)\b\.?': 'Avenue',  # matches ave, av, and avn
+        r'\brd\b\.?': 'Road',
+        r'\bblvd\b\.?': 'Boulevard',
+        r'\bln\b\.?': 'Lane',
+        r'\bdr\b\.?': 'Drive',
+        r'\bapt\b\.?': 'Apartment',
+        r'\bfl\b\.?': 'Floor',
+        r'\brt\b\.?': 'Route',
+        r'\bhwy\b\.?': 'Highway',
+        r'\bp(?:k?wy|rkw)\b\.?': 'Parkway',  # matches pkwy, prkw, pwy
+        r'\bsq\b\.?': 'Square',
+        r'\bpl\b\.?': 'Place',
+        r'\bter\b\.?': 'Terrace',
+        r'\bcir\b\.?': 'Circle',
+        r'\bct\b\.?': 'Court',
+        r'\bexpy\b\.?': 'Expressway',
+        r'\bfwy\b\.?': 'Freeway',
+        r'\bste\b\.?': 'Suite',
+        r'\bn\b\.?': 'North',
+        r'\bs\b\.?': 'South',
+        r'\be\b\.?': 'East',
+        r'\bw\b\.?': 'West',
+        r'\bno\b\.?': 'Number',
+        r'\b#\b': 'Number',
+        r'\bext\b\.?': 'Extension',
+        r'\bse\b\.?': 'Section'
     }
     
-    # Replace other abbreviations
+    # Clean the text first
+    address = clean_text(address)
+    
+    # Replace abbreviations
     for abbr, full in abbreviations.items():
         address = re.sub(abbr, full, address, flags=re.IGNORECASE)
     
-    return address
+    # Parse address into components
+    components = parse_address(address)
+    
+    if components:
+        # Apply APA title case to each component
+        for key in components:
+            if components[key]:
+                components[key] = apply_apa_title_case(components[key])
+        
+        # Reconstruct the address
+        parts = []
+        if components['street_number']:
+            parts.append(components['street_number'])
+        if components['street_name']:
+            parts.append(components['street_name'])
+        if components['city']:
+            parts.append(components['city'])
+        if components['state']:
+            parts.append(components['state'])
+        if components['zip_code']:
+            parts.append(components['zip_code'])
+        
+        return ', '.join(parts)
+    else:
+        # If parsing fails, just apply APA title case to the whole address
+        return apply_apa_title_case(address)
 
 def get_maps_search_url(address, state=None):
     """Generate a Google Maps search URL for the address"""
@@ -179,18 +254,114 @@ def get_maps_search_url(address, state=None):
 
 def process_address(address, state=None):
     if pd.isna(address) or not isinstance(address, str):
-        return None, None, None, False
+        return None, None, None, None, False
     
+    # Clean and standardize the address
     standardized_address = standardize_address(address)
     standardized_state = standardize_state(state) if state else None
+    
+    # Parse the standardized address
+    components = parse_address(standardized_address)
+    
+    # Generate Maps URL
     maps_url = get_maps_search_url(standardized_address, standardized_state)
     
-    return standardized_address, standardized_state, maps_url, True
+    return standardized_address, standardized_state, components, maps_url, True
+
+def clean_text(text):
+    """Clean text by removing extra spaces, special characters, and HTML tags"""
+    if pd.isna(text) or not isinstance(text, str):
+        return text
+        
+    # Decode HTML entities
+    text = html.unescape(text)
+    
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    
+    # Remove special characters except basic punctuation
+    text = re.sub(r'[^\w\s,.-]', ' ', text)
+    
+    # Replace multiple spaces with a single space
+    text = re.sub(r'\s+', ' ', text)
+    
+    # Remove spaces before and after periods, commas
+    text = re.sub(r'\s*([.,])\s*', r'\1 ', text)
+    
+    # Remove leading/trailing spaces
+    return text.strip()
+
+def parse_address(address):
+    """Parse address into components using usaddress library"""
+    try:
+        tagged_address, address_type = usaddress.tag(address)
+        components = {
+            'street_number': '',
+            'street_name': '',
+            'city': '',
+            'state': '',
+            'zip_code': ''
+        }
+        
+        # Map usaddress tags to our components
+        mapping = {
+            'AddressNumber': 'street_number',
+            'StreetName': 'street_name',
+            'StreetNamePostType': 'street_name',
+            'PlaceName': 'city',
+            'StateName': 'state',
+            'ZipCode': 'zip_code'
+        }
+        
+        for tag, value in tagged_address.items():
+            if tag in mapping:
+                key = mapping[tag]
+                if key == 'street_name' and components[key]:
+                    components[key] += ' ' + value
+                else:
+                    components[key] = value
+        
+        return components
+    except:
+        return None
+
+def read_file_content(file, file_extension):
+    """Read file content based on file type"""
+    if file_extension == 'txt':
+        # Read txt file and convert to DataFrame
+        content = file.read().decode('utf-8')
+        addresses = [line.strip() for line in content.split('\n') if line.strip()]
+        return pd.DataFrame({'Address': addresses})
+    elif file_extension == 'csv':
+        return pd.read_csv(file)
+    else:  # xlsx or xls
+        return pd.read_excel(file)
 
 def save_file(df, filename, format_type):
     """Save file in specified format with optional Excel formatting"""
     base_filename = os.path.splitext(filename)[0]
-    if format_type == 'csv':
+    
+    if format_type == 'txt':
+        output_filename = f"updated_{base_filename}.txt"
+        output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+        
+        # Combine all relevant columns into a formatted string
+        formatted_addresses = []
+        for _, row in df.iterrows():
+            if row['Address_Updated']:
+                address_parts = []
+                if pd.notna(row.get('Standardized_Address')):
+                    address_parts.append(row['Standardized_Address'])
+                if pd.notna(row.get('Standardized_State')):
+                    address_parts.append(row['Standardized_State'])
+                if pd.notna(row.get('Maps_URL')):
+                    address_parts.append(f"Maps: {row['Maps_URL']}")
+                formatted_addresses.append(' | '.join(address_parts))
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(formatted_addresses))
+            
+    elif format_type == 'csv':
         output_filename = f"updated_{base_filename}.csv"
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
         df.to_csv(output_path, index=False)
@@ -239,12 +410,8 @@ def upload_file():
         # Secure the filename
         filename = secure_filename(file.filename)
         
-        # Read the file based on its extension
-        file_extension = filename.rsplit('.', 1)[1].lower()
-        if file_extension == 'csv':
-            df = pd.read_csv(file)
-        else:
-            df = pd.read_excel(file)
+        # Read the file
+        df = read_file_content(file, filename.rsplit('.', 1)[1].lower())
         
         # Find the address and state columns
         address_column = find_address_column(df)
@@ -256,6 +423,11 @@ def upload_file():
         # Create new columns for the processed data
         df['Standardized_Address'] = None
         df['Standardized_State'] = None
+        df['Street_Number'] = None
+        df['Street_Name'] = None
+        df['City'] = None
+        df['State'] = None
+        df['ZIP_Code'] = None
         df['Maps_URL'] = None
         df['Address_Updated'] = False
         
@@ -263,22 +435,30 @@ def upload_file():
         for idx in df.index:
             if pd.notna(df.at[idx, address_column]):
                 state_value = df.at[idx, state_column] if state_column else None
-                standardized_addr, standardized_state, maps_url, was_updated = process_address(
+                standardized_addr, standardized_state, components, maps_url, was_updated = process_address(
                     df.at[idx, address_column],
                     state_value
                 )
                 if was_updated:
                     df.at[idx, 'Standardized_Address'] = standardized_addr
                     df.at[idx, 'Standardized_State'] = standardized_state
+                    if components:
+                        df.at[idx, 'Street_Number'] = components['street_number']
+                        df.at[idx, 'Street_Name'] = components['street_name']
+                        df.at[idx, 'City'] = components['city']
+                        df.at[idx, 'State'] = components['state']
+                        df.at[idx, 'ZIP_Code'] = components['zip_code']
                     df.at[idx, 'Maps_URL'] = maps_url
                     df.at[idx, 'Address_Updated'] = True
         
-        # Save both CSV and Excel versions
+        # Save in all formats
+        txt_filename, txt_path = save_file(df, filename, 'txt')
         csv_filename, csv_path = save_file(df, filename, 'csv')
         xlsx_filename, xlsx_path = save_file(df, filename, 'xlsx')
         
         return jsonify({
             'success': True,
+            'txt_filename': txt_filename,
             'csv_filename': csv_filename,
             'xlsx_filename': xlsx_filename
         })
