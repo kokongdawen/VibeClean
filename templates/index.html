@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeClean</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 50px;
+        }
+        .upload-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-top: 20px;
+        }
+        .drag-area {
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .drag-area:hover {
+            border-color: #0d6efd;
+            background-color: #f8f9fa;
+        }
+        #progress {
+            display: none;
+            margin-top: 20px;
+        }
+        #download-options {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .download-btn {
+            margin: 0 5px;
+        }
+        .tagline {
+            color: #6c757d;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+        .format-instructions {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .excel-preview {
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .excel-header {
+            background-color: #e9ecef;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .excel-row {
+            padding: 4px 8px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .excel-row:last-child {
+            border-bottom: none;
+        }
+        .instruction-step {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: start;
+        }
+        .step-number {
+            background-color: #0d6efd;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="upload-container">
+                    <h2 class="text-center mb-3">VibeClean</h2>
+                    <p class="text-center tagline">
+                        Simple Address Cleaning Tool Using Python
+                    </p>
+                    
+                    <p class="text-center text-muted mb-4">
+                        Upload your Excel or CSV file containing addresses to standardize them and get Google Maps links.
+                    </p>
+                    
+                    <form id="upload-form" enctype="multipart/form-data">
+                        <div class="drag-area" id="drag-area">
+                            <div class="icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                            <p>Drag & Drop your Excel or CSV file here or click to browse</p>
+                            <input type="file" id="file-input" accept=".xlsx,.xls,.csv" class="d-none">
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary" id="upload-button" disabled>
+                                Process File
+                            </button>
+                        </div>
+                        
+                        <div id="progress" class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%">
+                            </div>
+                        </div>
+                        
+                        <div id="download-options" class="mt-4">
+                            <h6 class="mb-3">Download Processed File As:</h6>
+                            <a href="#" class="btn btn-success download-btn" id="xlsx-download">
+                                <i class="fas fa-file-excel"></i> Excel (.xlsx)
+                            </a>
+                            <a href="#" class="btn btn-success download-btn" id="csv-download">
+                                <i class="fas fa-file-csv"></i> CSV
+                            </a>
+                        </div>
+                    </form>
+
+                    <!-- Format Instructions -->
+                    <div class="format-instructions">
+                        <h5 class="mb-3"><i class="fas fa-info-circle text-primary"></i> How to Format Your File</h5>
+                        
+                        <div class="instruction-step">
+                            <div class="step-number">1</div>
+                            <div>Create an Excel (.xlsx/.xls) or CSV file with a column named "Address" or "Addresses"</div>
+                        </div>
+                        
+                        <div class="instruction-step">
+                            <div class="step-number">2</div>
+                            <div>Enter your addresses in the rows below the header</div>
+                        </div>
+
+                        <div class="instruction-step">
+                            <div class="step-number">3</div>
+                            <div>Upload your file and choose your preferred download format (Excel or CSV)</div>
+                        </div>
+
+                        <div class="excel-preview">
+                            <div class="excel-header">
+                                <strong>Address</strong> or <strong>Addresses</strong> | Other Columns (optional)
+                            </div>
+                            <div class="excel-row">
+                                123 Main St, City, State
+                            </div>
+                            <div class="excel-row">
+                                456 Oak Ave, Town, State
+                            </div>
+                            <div class="excel-row">
+                                789 Pine Blvd, Village, State
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="fas fa-lightbulb"></i> Tips:
+                            <ul class="mb-0 mt-2">
+                                <li>The column name can be "Address" or "Addresses" (not case sensitive)</li>
+                                <li>You can have other columns - they won't affect processing</li>
+                                <li>Addresses can be in any format - we'll standardize them</li>
+                                <li>Download options:
+                                    <ul>
+                                        <li>Excel (.xlsx) - Includes color highlighting for processed rows</li>
+                                        <li>CSV - Simple text format, compatible with most applications</li>
+                                    </ul>
+                                </li>
+                                <li>You can download in either format regardless of your input file format</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const dragArea = document.getElementById('drag-area');
+        const fileInput = document.getElementById('file-input');
+        const uploadButton = document.getElementById('upload-button');
+        const progressBar = document.querySelector('.progress-bar');
+        const progressDiv = document.getElementById('progress');
+        const downloadOptions = document.getElementById('download-options');
+        const xlsxDownload = document.getElementById('xlsx-download');
+        const csvDownload = document.getElementById('csv-download');
+
+        // Handle drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dragArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dragArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dragArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dragArea.classList.add('bg-light');
+        }
+
+        function unhighlight(e) {
+            dragArea.classList.remove('bg-light');
+        }
+
+        dragArea.addEventListener('drop', handleDrop, false);
+        dragArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFiles);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles({ target: { files: files } });
+        }
+
+        function handleFiles(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.match(/\.(xlsx|xls|csv)$/)) {
+                    uploadButton.disabled = false;
+                    dragArea.querySelector('p').textContent = `Selected: ${file.name}`;
+                } else {
+                    alert('Please select an Excel (.xlsx/.xls) or CSV file');
+                    uploadButton.disabled = true;
+                }
+            }
+        }
+
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            uploadButton.disabled = true;
+            progressDiv.style.display = 'block';
+            downloadOptions.style.display = 'none';
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    progressBar.style.width = '100%';
+                    downloadOptions.style.display = 'block';
+                    xlsxDownload.href = `/download/${result.xlsx_filename}`;
+                    csvDownload.href = `/download/${result.csv_filename}`;
+                } else {
+                    alert(result.error || 'An error occurred during processing');
+                }
+            } catch (error) {
+                alert('An error occurred during upload');
+                console.error('Error:', error);
+            }
+
+            uploadButton.disabled = false;
+        });
+    </script>
+</body>
+</html> 
