@@ -119,11 +119,11 @@
                 <div class="upload-container">
                     <h2 class="text-center mb-3">VibeClean</h2>
                     <p class="text-center tagline">
-                        Advanced Address Standardization and Parsing Tool
+                        Simple Address Cleaning Tool Using Python
                     </p>
                     
                     <p class="text-center text-muted mb-4">
-                        Upload your file containing addresses to standardize them, parse components, and get Google Maps links.
+                        Upload your file containing addresses to standardize them and get Google Maps links.
                     </p>
                     
                     <form id="upload-form" enctype="multipart/form-data">
@@ -230,7 +230,7 @@
                             <div>
                                 For Excel/CSV: Use column headers:<br>
                                 - Required: "Address" or "Addresses"<br>
-                                - Optional: "State"/"States", "City"/"Cities", "ZIP"/"ZIP_Code"/"Zipcode"<br>
+                                - Optional: "State"/"States", "City"/"Cities"<br>
                                 For Text: One address per line
                             </div>
                         </div>
@@ -242,13 +242,13 @@
 
                         <div class="excel-preview">
                             <div class="excel-header">
-                                <strong>Address</strong> | <strong>City</strong> (optional) | <strong>State</strong> (optional) | <strong>ZIP</strong> (optional) | Other Columns (optional)
+                                <strong>Address</strong> | <strong>City</strong> (optional) | <strong>State</strong> (optional) | Other Columns (optional)
                             </div>
                             <div class="excel-row">
-                                123 Main St | New York | NY | 10001 | Additional Info
+                                123 Main St | New York | NY | Additional Info
                             </div>
                             <div class="excel-row">
-                                456 Oak Ave | Los Angeles | CA | 90001 | More Info
+                                456 Oak Ave | Los Angeles | CA | More Info
                             </div>
                         </div>
 
